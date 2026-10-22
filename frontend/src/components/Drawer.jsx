@@ -1,40 +1,64 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 // Right-hand slide-over panel. Closes on backdrop click or Escape.
+// Responsive: full-width on mobile (< sm), max-w-md on tablet, max-w-lg on desktop.
 export default function Drawer({ open, onClose, title, children }) {
+  const panelRef = useRef(null);
+
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    if (open) document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    const onKey = (e) => {
+      if (e.key === "Escape" && open) {
+        onClose();
+      }
+    };
+    if (open) {
+      document.addEventListener("keydown", onKey);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [open, onClose]);
 
   return (
-    <div className={`fixed inset-0 z-[1000] ${open ? "" : "pointer-events-none"}`}>
+    <div
+      className={`fixed inset-0 z-[1000] ${open ? "" : "pointer-events-none"}`}
+      aria-hidden={!open}
+    >
       {/* backdrop */}
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-slate-900/40 transition-opacity duration-200 ${
+        aria-hidden="true"
+        className={`absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200 ${
           open ? "opacity-100" : "opacity-0"
         }`}
       />
       {/* panel */}
       <div
-        className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-white shadow-xl transition-transform duration-200 ${
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`absolute right-0 top-0 flex h-full w-full sm:max-w-md md:max-w-lg flex-col bg-white shadow-2xl transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+          <h3 className="text-base font-semibold text-slate-800">{title}</h3>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Close panel"
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
-        <div className="flex-1 overflow-auto p-5">{children}</div>
+        <div className="flex-1 overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );
 }
+

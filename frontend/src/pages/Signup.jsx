@@ -46,46 +46,88 @@ export default function Signup() {
     }
   }
 
+  const inputDarkClass =
+    "border-slate-700 bg-slate-800/90 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:ring-cyan-500/30";
+
   return (
     <AuthShell title="Create your account" subtitle="Tourist registration (with consent)">
-      <form onSubmit={submit} className="space-y-4">
-        <Field label="Email">
-          <Input type="email" value={form.email} onChange={set("email")} required />
+      <form onSubmit={submit} className="space-y-3.5">
+        <Field label="Email" labelClassName="text-slate-200">
+          <Input
+            type="email"
+            value={form.email}
+            onChange={set("email")}
+            required
+            className={inputDarkClass}
+            placeholder="tourist@example.com"
+          />
         </Field>
-        <Field label="Password" hint="At least 6 characters">
-          <Input type="password" value={form.password} onChange={set("password")} required />
+        <Field label="Password" hint="At least 6 characters" labelClassName="text-slate-200">
+          <Input
+            type="password"
+            value={form.password}
+            onChange={set("password")}
+            required
+            className={inputDarkClass}
+            placeholder="••••••••"
+          />
         </Field>
-        <Field label="Name">
-          <Input value={form.display_name} onChange={set("display_name")} placeholder="Aarav Sharma" />
+        <Field label="Name" labelClassName="text-slate-200">
+          <Input
+            value={form.display_name}
+            onChange={set("display_name")}
+            placeholder="Aarav Sharma"
+            className={inputDarkClass}
+          />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Nationality">
-            <Input value={form.nationality} onChange={set("nationality")} placeholder="IN" />
+          <Field label="Nationality" labelClassName="text-slate-200">
+            <Input
+              value={form.nationality}
+              onChange={set("nationality")}
+              placeholder="IN"
+              className={inputDarkClass}
+            />
           </Field>
-          <Field label="Emergency contact">
-            <Input value={form.emergency_contact} onChange={set("emergency_contact")} placeholder="+91-…" />
+          <Field label="Emergency contact" labelClassName="text-slate-200">
+            <Input
+              value={form.emergency_contact}
+              onChange={set("emergency_contact")}
+              placeholder="+91-…"
+              className={inputDarkClass}
+            />
           </Field>
         </div>
-        <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+        <label className="flex items-start gap-3 rounded-xl border border-slate-700/60 bg-slate-800/60 p-3 text-xs leading-relaxed text-slate-300 transition hover:bg-slate-800/80">
           <input
             type="checkbox"
             checked={form.consent_given}
             onChange={(e) => setForm({ ...form, consent_given: e.target.checked })}
-            className="mt-0.5 h-4 w-4 accent-brand-600"
+            className="mt-0.5 h-4 w-4 rounded accent-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
           />
-          <span>I consent to processing my location for <b>safety monitoring</b> (DPDP).</span>
+          <span>
+            I consent to processing my location for <strong className="text-white font-medium">safety monitoring</strong> (DPDP Act).
+          </span>
         </label>
-        {err && <p className="text-sm text-red-600">{err}</p>}
-        <Button type="submit" disabled={busy} className="w-full">
-          {busy ? <Spinner /> : <UserPlus size={16} />} Create account
+        {err && (
+          <p className="rounded-lg border border-red-800/60 bg-red-950/50 p-2.5 text-xs font-medium text-red-300">
+            {err}
+          </p>
+        )}
+        <Button type="submit" disabled={busy} className="w-full shadow-md">
+          {busy ? <Spinner /> : <UserPlus size={16} aria-hidden="true" />} Create account
         </Button>
       </form>
-      <p className="mt-4 text-center text-sm text-slate-500">
+      <p className="mt-4 text-center text-xs text-slate-400">
         Already have an account?{" "}
-        <Link to="/login" className="font-medium text-brand-600 hover:underline">
+        <Link
+          to="/login"
+          className="font-medium text-cyan-400 transition hover:text-cyan-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded"
+        >
           Sign in
         </Link>
       </p>
     </AuthShell>
   );
 }
+

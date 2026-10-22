@@ -34,3 +34,10 @@ body {
   font-family: var(--font-sans);
   z-index: 0;
 }
+
+/* Accessible focus-visible baseline across all interactive controls */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+

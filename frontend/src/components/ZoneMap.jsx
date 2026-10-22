@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import {
   MapContainer,
@@ -8,6 +8,7 @@ import {
   Polyline,
   Popup,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import {
   ZONE_COLORS,
@@ -34,12 +35,73 @@ function FitToZones({ geojson }) {
   return null;
 }
 
-// Pan to follow a moving point (e.g. the tourist during a simulated trip).
+// Fit the view to route polyline bounds when a new route is selected/planned.
+// Avoids resetting during location updates by keying on route endpoints and length.
+function FitToRoute({ route, padding = [40, 40] }) {
+  const map = useMap();
+  const lastRouteKeyRef = useRef(null);
+
+  useEffect(() => {
+    if (!route || route.length < 2) return;
+    const key = `${route.length}-${route[0][0]},${route[0][1]}-${route[route.length - 1][0]},${route[route.length - 1][1]}`;
+    if (lastRouteKeyRef.current === key) return;
+    lastRouteKeyRef.current = key;
+
+    try {
+      const bounds = L.latLngBounds(route);
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding, maxZoom: 16 });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [route, padding, map]);
+
+  return null;
+}
+
+// Pan to single location marker when placed (if no full route is active).
+function FocusLocation({ marker, hasRoute }) {
+  const map = useMap();
+  const lastKeyRef = useRef(null);
+
+  useEffect(() => {
+    if (hasRoute) return;
+    if (!marker || marker.lat == null || marker.lon == null) return;
+    const key = `${marker.lat.toFixed(4)},${marker.lon.toFixed(4)}`;
+    if (lastKeyRef.current === key) return;
+    lastKeyRef.current = key;
+
+    try {
+      map.setView([marker.lat, marker.lon], 14, { animate: true });
+    } catch {
+      /* ignore */
+    }
+  }, [marker, hasRoute, map]);
+
+  return null;
+}
+
+// Pan to follow a moving point during simulation without resetting zoom.
 function Recenter({ center, follow }) {
   const map = useMap();
   useEffect(() => {
-    if (follow && center) map.panTo(center);
+    if (follow && center) map.panTo(center, { animate: true, duration: 0.5 });
   }, [center, follow, map]);
+  return null;
+}
+
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      if (onMapClick) {
+        onMapClick({
+          lat: +e.latlng.lat.toFixed(4),
+          lon: +e.latlng.lng.toFixed(4),
+        });
+      }
+    },
+  });
   return null;
 }
 
@@ -54,23 +116,36 @@ function zoneStyle(feature) {
   };
 }
 
-function onEachZone(feature, layer) {
-  const p = feature.properties;
-  layer.bindTooltip(
-    `${p.name} · ${titleCase(p.risk_category)}${p.restricted ? " · restricted" : ""}`,
-    { sticky: true }
-  );
+function createOnEachZone(onMapClick) {
+  return function onEachZone(feature, layer) {
+    const p = feature.properties;
+    layer.bindTooltip(
+      `${p.name} · ${titleCase(p.risk_category)}${p.restricted ? " · restricted" : ""}`,
+      { sticky: true }
+    );
+    if (onMapClick) {
+      layer.on("click", (e) => {
+        onMapClick({
+          lat: +e.latlng.lat.toFixed(4),
+          lon: +e.latlng.lng.toFixed(4),
+        });
+      });
+    }
+  };
 }
 
 export default function ZoneMap({
   geojson,
   incidents = [],
   marker = null,
+  selectedCoord = null,
   height = 460,
   center = BENGALURU,
   zoom = 12,
   fit = false,
+  fitRoute = true,
   onIncidentClick,
+  onMapClick,
   route = null,
   routeColor = "#2563eb",
   safetyPoints = [],
@@ -78,18 +153,43 @@ export default function ZoneMap({
   tourists = [],
   onTouristClick,
 }) {
+  const hasRoute = Boolean(route && route.length >= 2);
+
   return (
-    <div style={{ height }}>
+    <div style={{ height }} className="relative w-full rounded-xl overflow-hidden">
       <MapContainer center={center} zoom={zoom} scrollWheelZoom>
         <TileLayer
           attribution='&copy; OpenStreetMap'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {fit && <FitToZones geojson={geojson} />}
+        {fitRoute && hasRoute && <FitToRoute route={route} />}
+        <FocusLocation marker={marker} hasRoute={hasRoute} />
         <Recenter center={center} follow={follow} />
+        {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
 
         {route && route.length >= 2 && (
-          <Polyline positions={route} pathOptions={{ color: routeColor, weight: 5, opacity: 0.75 }} />
+          <>
+            <Polyline positions={route} pathOptions={{ color: routeColor, weight: 5, opacity: 0.75 }} />
+            <CircleMarker
+              center={route[0]}
+              radius={7}
+              pathOptions={{ color: "#065f46", fillColor: "#10b981", fillOpacity: 0.95, weight: 2 }}
+            >
+              <Popup>
+                <div className="text-xs font-semibold text-emerald-800">Route Start</div>
+              </Popup>
+            </CircleMarker>
+            <CircleMarker
+              center={route[route.length - 1]}
+              radius={7}
+              pathOptions={{ color: "#991b1b", fillColor: "#ef4444", fillOpacity: 0.95, weight: 2 }}
+            >
+              <Popup>
+                <div className="text-xs font-semibold text-red-800">Route Destination</div>
+              </Popup>
+            </CircleMarker>
+          </>
         )}
 
         {safetyPoints
@@ -117,7 +217,7 @@ export default function ZoneMap({
             key={geojson.features?.length || 0}
             data={geojson}
             style={zoneStyle}
-            onEachFeature={onEachZone}
+            onEachFeature={createOnEachZone(onMapClick)}
           />
         )}
 
@@ -186,6 +286,29 @@ export default function ZoneMap({
             pathOptions={{ color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.9 }}
           >
             <Popup>{marker.label || "Current location"}</Popup>
+          </CircleMarker>
+        )}
+
+        {selectedCoord && selectedCoord.lat != null && selectedCoord.lon != null && (
+          <CircleMarker
+            center={[Number(selectedCoord.lat), Number(selectedCoord.lon)]}
+            radius={8}
+            pathOptions={{
+              color: "#0369a1",
+              fillColor: "#38bdf8",
+              fillOpacity: 0.95,
+              weight: 3,
+            }}
+          >
+            <Popup>
+              <div className="text-xs">
+                <div className="font-semibold text-slate-800">Selected Coordinates</div>
+                <div className="font-mono text-slate-600 mt-0.5">
+                  {Number(selectedCoord.lat).toFixed(4)}, {Number(selectedCoord.lon).toFixed(4)}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Area risk lookup target</div>
+              </div>
+            </Popup>
           </CircleMarker>
         )}
       </MapContainer>
