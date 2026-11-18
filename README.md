@@ -4,6 +4,12 @@ Monorepo for a platform that monitors tourists in real time, predicts area risk,
 detects distress (route deviation, inactivity, signal drop-off, crowding),
 watches for risk events, and prepares decision-ready alerts for authorities.
 
+## Review this fork
+
+- This repository is a fork. Use the upstream link in the repository header to inspect provenance and distinguish upstream implementation from changes in this fork.
+- Start with [the architecture documentation](DOCUMENTATION.md), then compare [deterministic detection](backend/app/detection/) with [advisory agents](backend/app/agents/) and [their tests](backend/tests/).
+- Follow [backend setup](backend/README.md) and [frontend setup](frontend/README.md) for a synthetic-data demonstration. The interface and risk estimates are prototype outputs, not a validated personal-safety or emergency-response service.
+
 ## Layout
 
 ```
